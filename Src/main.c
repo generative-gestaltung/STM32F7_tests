@@ -13,7 +13,7 @@ I2C_HandleTypeDef I2cHandle;
 UART_HandleTypeDef UartHandle;
 SPI_HandleTypeDef SpiHandle;
 
-uint8_t txBuffer[] = {0x85, 0x55, 0x37};
+uint8_t txBuffer[] = {0x90, 0x55, 0x37};
 uint8_t rxBuffer[BUFSIZE];
 
 
@@ -73,7 +73,7 @@ int main(void)
 	/*##-1- Configure the UART peripheral ######################################*/
   UartHandle.Instance        = USARTx;
 
-  UartHandle.Init.BaudRate   = 57600;
+  UartHandle.Init.BaudRate   = 31250;
   UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
   UartHandle.Init.StopBits   = UART_STOPBITS_1;
   UartHandle.Init.Parity     = UART_PARITY_NONE;
@@ -95,15 +95,17 @@ int main(void)
   //while(HAL_I2C_Master_Transmit(&I2cHandle, (uint16_t)I2C_ADDRESS, (uint8_t*)aTxBuffer, TXBUFFERSIZE, 10000)!= HAL_OK)
   while(1)
   {
-		HAL_I2C_Master_Transmit(&I2cHandle, (uint16_t)I2C_ADDRESS, (uint8_t*)txBuffer, 1, 10000);
-		HAL_SPI_TransmitReceive(&SpiHandle, (uint8_t*)txBuffer, (uint8_t *)rxBuffer, BUFSIZE, 5000);
-		HAL_UART_Transmit(&UartHandle, (uint8_t*)txBuffer, BUFSIZE, 5000);
-		
+		//HAL_I2C_Master_Transmit(&I2cHandle, (uint16_t)I2C_ADDRESS, (uint8_t*)txBuffer, 1, 10000);
+		//HAL_SPI_TransmitReceive(&SpiHandle, (uint8_t*)txBuffer, (uint8_t *)rxBuffer, BUFSIZE, 5000);
+		HAL_UART_Transmit(&UartHandle, (uint8_t*)txBuffer , BUFSIZE, 5000);
+    HAL_Delay(300);
 		if (!cnt) {
-			gpio_all_on();
+			//gpio_all_on();
+			txBuffer[0] = 0x90;
 		}
 		else {
-			gpio_all_off();
+			txBuffer[0] = 0x80;
+			//gpio_all_off();
 		}
 		cnt = (cnt+1)%2;
 		

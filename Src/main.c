@@ -1,7 +1,6 @@
 #include "main.h"
 #include "gpio.h"
 
-#define MASTER_BOARD
 #define I2C_ADDRESS        0x30F
 
 /* I2C TIMING Register define when I2C clock source is APB1 (SYSCLK/4) */
@@ -10,8 +9,15 @@
 #define I2C_TIMING      0x40912732
 
 I2C_HandleTypeDef I2cHandle;
-uint8_t aTxBuffer[] = " ****I2C_TwoBoards communication based on Polling****  ****I2C_TwoBoards communication based on Polling****  ****I2C_TwoBoards communication based on Polling**** ";
-uint8_t aRxBuffer[RXBUFFERSIZE];
+//uint8_t aTxBuffer[] = " ****I2C_TwoBoards communication based on Polling****  ****I2C_TwoBoards communication based on Polling****  ****I2C_TwoBoards communication based on Polling**** ";
+//uint8_t aRxBuffer[RXBUFFERSIZE];
+
+
+#define BUFSIZE 3
+SPI_HandleTypeDef SpiHandle;
+uint8_t txBuffer[] = {0x85, 0x55, 0x37};
+uint8_t rxBuffer[BUFSIZE];
+
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -40,18 +46,38 @@ int main(void)
   I2cHandle.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
   I2cHandle.Init.NoStretchMode   = I2C_NOSTRETCH_DISABLE;  
   
-  if(HAL_I2C_Init(&I2cHandle) != HAL_OK)
-  {
+  if(HAL_I2C_Init(&I2cHandle) != HAL_OK) {
     Error_Handler();
   }
   
   HAL_I2CEx_ConfigAnalogFilter(&I2cHandle,I2C_ANALOGFILTER_ENABLE);
+	
+	
+	/*##-1- Configure the SPI peripheral ######################################*/
+	SpiHandle.Instance               = SPIx;
+  SpiHandle.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
+  SpiHandle.Init.Direction         = SPI_DIRECTION_2LINES;
+  SpiHandle.Init.CLKPhase          = SPI_PHASE_1EDGE;
+  SpiHandle.Init.CLKPolarity       = SPI_POLARITY_HIGH;
+  SpiHandle.Init.DataSize          = SPI_DATASIZE_8BIT;
+  SpiHandle.Init.FirstBit          = SPI_FIRSTBIT_MSB;
+  SpiHandle.Init.TIMode            = SPI_TIMODE_DISABLE;
+  SpiHandle.Init.CRCCalculation    = SPI_CRCCALCULATION_DISABLE;
+  SpiHandle.Init.CRCPolynomial     = 7;
+  SpiHandle.Init.NSS               = SPI_NSS_SOFT;
+	SpiHandle.Init.Mode = SPI_MODE_MASTER;
+
+  if(HAL_SPI_Init(&SpiHandle) != HAL_OK) {
+    Error_Handler();
+  }
 
 	
   //while(HAL_I2C_Master_Transmit(&I2cHandle, (uint16_t)I2C_ADDRESS, (uint8_t*)aTxBuffer, TXBUFFERSIZE, 10000)!= HAL_OK)
   while(1)
   {
-		HAL_I2C_Master_Transmit(&I2cHandle, (uint16_t)I2C_ADDRESS, &dd, 1, 10000);
+		HAL_I2C_Master_Transmit(&I2cHandle, (uint16_t)I2C_ADDRESS, (uint8_t*)txBuffer, 1, 10000);
+		HAL_SPI_TransmitReceive(&SpiHandle, (uint8_t*)txBuffer, (uint8_t *)rxBuffer, BUFSIZE, 5000);
+		
 		if (!cnt) {
 			BSP_LED_On(LED1);
 			gpio_all_on();
@@ -61,24 +87,7 @@ int main(void)
 			gpio_all_off();
 		}
 		cnt = (cnt+1)%2;
-		
-    if (HAL_I2C_GetError(&I2cHandle) != HAL_I2C_ERROR_AF)
-    {
-      Error_Handler();
-    }
-  }
- /*
-	BSP_LED_On(LED1);
-
- 
-  while(HAL_I2C_Master_Receive(&I2cHandle, (uint16_t)I2C_ADDRESS, (uint8_t *)aRxBuffer, RXBUFFERSIZE, 10000) != HAL_OK)
-  {
-    if (HAL_I2C_GetError(&I2cHandle) != HAL_I2C_ERROR_AF)
-    {
-      Error_Handler();
-    }
-  }
-*/	    
+  }	    
 }
 
 void SystemClock_Config(void)

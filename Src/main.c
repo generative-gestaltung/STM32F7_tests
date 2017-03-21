@@ -7,19 +7,16 @@
 /* I2C TIMING is calculated in case of the I2C Clock source is the APB1CLK = 50 MHz */
 /* This example use TIMING to 0x40912732 to reach 100 kHz speed (Rise time = 700 ns, Fall time = 100 ns) */
 #define I2C_TIMING      0x40912732
+#define BUFSIZE 3
 
 I2C_HandleTypeDef I2cHandle;
-//uint8_t aTxBuffer[] = " ****I2C_TwoBoards communication based on Polling****  ****I2C_TwoBoards communication based on Polling****  ****I2C_TwoBoards communication based on Polling**** ";
-//uint8_t aRxBuffer[RXBUFFERSIZE];
-
-
-#define BUFSIZE 3
+UART_HandleTypeDef UartHandle;
 SPI_HandleTypeDef SpiHandle;
+
 uint8_t txBuffer[] = {0x85, 0x55, 0x37};
 uint8_t rxBuffer[BUFSIZE];
 
 
-/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void Error_Handler(void);
 static void CPU_CACHE_Enable(void);
@@ -32,7 +29,7 @@ int main(void)
   HAL_Init();
   
   SystemClock_Config();
-  BSP_LED_Init(LED1);
+  //BSP_LED_Init(LED1);
 	gpio_init();
   
 
@@ -72,21 +69,44 @@ int main(void)
   }
 
 	
+	
+	/*##-1- Configure the UART peripheral ######################################*/
+  UartHandle.Instance        = USARTx;
+
+  UartHandle.Init.BaudRate   = 57600;
+  UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
+  UartHandle.Init.StopBits   = UART_STOPBITS_1;
+  UartHandle.Init.Parity     = UART_PARITY_NONE;
+  UartHandle.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
+  UartHandle.Init.Mode       = UART_MODE_TX_RX;
+  UartHandle.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if(HAL_UART_DeInit(&UartHandle) != HAL_OK)
+  {
+    Error_Handler();
+  }  
+  if(HAL_UART_Init(&UartHandle) != HAL_OK)
+  {
+    Error_Handler();
+  }
+	
+	
+	
+	
   //while(HAL_I2C_Master_Transmit(&I2cHandle, (uint16_t)I2C_ADDRESS, (uint8_t*)aTxBuffer, TXBUFFERSIZE, 10000)!= HAL_OK)
   while(1)
   {
 		HAL_I2C_Master_Transmit(&I2cHandle, (uint16_t)I2C_ADDRESS, (uint8_t*)txBuffer, 1, 10000);
 		HAL_SPI_TransmitReceive(&SpiHandle, (uint8_t*)txBuffer, (uint8_t *)rxBuffer, BUFSIZE, 5000);
+		HAL_UART_Transmit(&UartHandle, (uint8_t*)txBuffer, BUFSIZE, 5000);
 		
 		if (!cnt) {
-			BSP_LED_On(LED1);
 			gpio_all_on();
 		}
 		else {
-			BSP_LED_Off(LED1);
 			gpio_all_off();
 		}
 		cnt = (cnt+1)%2;
+		
   }	    
 }
 
@@ -133,33 +153,17 @@ void SystemClock_Config(void)
   }  
 }
 
-/**
-  * @brief  I2C error callbacks.
-  * @param  I2cHandle: I2C handle
-  * @note   This example shows a simple way to report transfer error, and you can
-  *         add your own implementation.
-  * @retval None
-  */
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
 {
-  /** Error_Handler() function is called when error occurs.
-    * 1- When Slave don't acknowledge it's address, Master restarts communication.
-    * 2- When Master don't acknowledge the last data transferred, Slave don't care in this example.
-    */
   if (HAL_I2C_GetError(I2cHandle) != HAL_I2C_ERROR_AF)
   {
     Error_Handler();
   }
 }
 
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @param  None
-  * @retval None
-  */
+
 static void Error_Handler(void)
 {
-  /* Error if LED1 is slowly blinking (1 sec. period) */
   while(1)
   {    
     BSP_LED_Toggle(LED1); 
@@ -169,39 +173,6 @@ static void Error_Handler(void)
 
 static void CPU_CACHE_Enable(void)
 {
-  /* Enable I-Cache */
   SCB_EnableICache();
-
-  /* Enable D-Cache */
   SCB_EnableDCache();
 }
-
-#ifdef  USE_FULL_ASSERT
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t* file, uint32_t line)
-{
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-
-  /* Infinite loop */
-  while (1)
-  {
-  }
-}
-#endif
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
